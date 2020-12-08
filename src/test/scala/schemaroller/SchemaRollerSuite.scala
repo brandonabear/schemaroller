@@ -127,6 +127,42 @@ class SchemaRollerSuite
     assert(result.count >= df.count)
   }
 
+  "expandArray" should "flatten array fields to columns" in {
+    val expectedSchema = StructType(
+      StructField("customer_customerId", StringType) ::
+        StructField("customer_statusCd_srcCd", StringType) ::
+        StructField("customer_statusCd_value", StringType) ::
+        StructField("vehicles_1_vin", StringType) ::
+        StructField("vehicles_1_wheels", ArrayType(StructType(
+          StructField("id", StringType) ::
+            Nil
+        ))) ::
+        StructField("vehicles_2_vin", StringType) ::
+        StructField("vehicles_2_wheels", ArrayType(StructType(
+          StructField("id", StringType) ::
+            Nil
+        ))) ::
+        Nil
+    )
+    val result = df.transform(SchemaRoller.expandArray("vehicles"))
+    assert(result.schema == expectedSchema)
+    assert(result.count >= df.count)
+  }
+
+  "recursiveFlatten" should "flatten all nested structures" in {
+    val expectedSchema = StructType(
+    StructField("customer_customerId", StringType) ::
+      StructField("customer_statusCd_srcCd", StringType) ::
+      StructField("customer_statusCd_value", StringType) ::
+      StructField("vehicles_vin", StringType) ::
+      StructField("vehicles_wheels_id", StringType) ::
+      Nil
+    )
+    val result = df.transform(SchemaRoller.recursiveFlatten(structOnly=false))
+    assert(result.schema == expectedSchema)
+    assert(result.count >= df.count)
+  }
+
   "isStruct" should "identify if StructField datatype is StructType" in {
       val isStruct = PrivateMethod[Boolean]('isStruct)
       val tests = Seq(
